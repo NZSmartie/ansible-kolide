@@ -10,37 +10,11 @@
     state: started
     enabled: yes
 
-- block:
-## http://mysqlserverteam.com/initialize-your-mysql-5-7-instances-with-ease/
-    - name: recover mysqld temporary password
-      command: "awk '/temporary password/ { print $NF }' /var/log/mysqld.log"
-      register: tmppass
-      changed_when: false
-    - debug: var=tmppass.stdout
-    - set_fact:
-        mysql_user: root
-        mysql_pass: "{{ tmppass.stdout }}"
-    - name: install mysql local configuration for root user
-      template:
-        src: my.cnf.j2
-        dest: /root/.my.cnf
-        mode: '0600'
-        backup: yes
-## https://www.percona.com/blog/2016/03/16/change-user-password-in-mysql-5-7-with-plugin-auth_socket/
-    - name: change mysqld root password
-      shell: mysql -u root --connect-expired-password -e "alter user 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '{{ kolide_mysql_root_pass }}';"
-      ignore_errors: true
-    - name: remove mysql local configuration for root user
-      file:
-        dest: /root/.my.cnf
-        state: absent
-  when: ansible_os_family == 'RedHat'
-
 - name: Create kolide mysql database
   mysql_db:
     name: "{{ kolide_mysql_db }}"
     state: present
-    login_user: root
+    login_user: "{{ kolide_mysql_root_user }}"
     login_password: "{{ kolide_mysql_root_pass }}"
 
 - name: Create kolide mysql user
@@ -49,19 +23,20 @@
     password: "{{ kolide_mysql_pass }}"
     priv: "{{ kolide_mysql_db }}.*:ALL"
     state: present
-    login_user: root
+    login_user: "{{ kolide_mysql_root_user }}"
     login_password: "{{ kolide_mysql_root_pass }}"
 
 - name: add kolide unix group
   group:
-    name: _kolide
+    name: "{{ kolide_group }}"
     state: present
 
 - name: add kolide unix user
   user:
-    name: _kolide
-    group: _kolide
+    name: "{{ kolide_user }}"
+    group: "{{ kolide_group }}"
     uid: "{{ kolide_uid }}"
+    system: "{{ kolide_system_user | default(no) }}"
     shell: /bin/false
     home: "{{ kolide_homedir }}"
 
@@ -69,8 +44,8 @@
   file:
     dest: "{{ item }}"
     state: directory
-    owner: _kolide
-    group: _kolide
+    owner: "{{ kolide_user }}"
+    group: "{{ kolide_group }}"
     mode: '0755'
   with_items:
     - /etc/kolide
@@ -87,11 +62,10 @@
         kolide_certificate_cert: "{{ ssl_dir }}/{{ ansible_fqdn }}.crt"
   when: kolide_certificate_cert == ''
 - name: ensure certificates is readable by kolide user
-  acl:
+  file:
     path: "{{ item }}"
-    entity: _kolide
-    etype: user
-    permissions: r
+    owner: "{{ kolide_user }}"
+    mode: "u+r,go-rwx"
     state: present
   with_items:
     - "{{ kolide_certificate_key }}"
