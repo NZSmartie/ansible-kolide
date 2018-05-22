@@ -8,6 +8,7 @@ mysql:
 redis:
   address: 127.0.0.1:6379
 server:
+  address: {{ kolide_ip_listen }}:{{ kolide_port }}
   cert: {{ kolide_certificate_cert }}
   key: {{ kolide_certificate_key }}
 logging:
@@ -15,3 +16,5 @@ logging:
 osquery:
   result_log_file: {{ kolide_logdir }}/osquery_result
   status_log_file: {{ kolide_logdir }}/osquery_status
+auth:
+  jwt_key: {{ kolide_auth_jwt_key | mandatory }}

@@ -3,16 +3,14 @@
 Description=kolide server
 Requires=redis.service
 Wants=mysqld.service
-After=redis.service mysqld.service
- 
-[Service]
+After=redis.service mysqld.service network.target
+
+[Service] 
 ## no daemon mode
 Type=simple
-## daemon mode
-#Type=forking
-User=_kolide
-Group=_kolide
-ExecStart=/usr/bin/kolide serve --config /etc/kolide/kolide.yml
+User={{ kolide_user }}
+Group={{ kolide_group }}
+ExecStart=/usr/bin/fleet serve --config /etc/kolide/kolide.yml
 UMask=0022
 TimeoutSec=30
 RestartSec=15s

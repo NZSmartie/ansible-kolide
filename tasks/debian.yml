@@ -1,28 +1,53 @@
 ---
-## https://docs.kolide.co/kolide/current/infrastructure/kolide-on-ubuntu.html
-## not public anymore?
+# TODO: Check if version installed is different to version being downloaded
+
+- name: Check Kolide Fleet version
+  command: fleet version
+  become: false # don't run as root
+  register: fleet_version_output
+  ignore_errors: yes
+  changed_when: no
+  failed_when: no
+
+- set_fact: 
+    fleet_version: "{{ fleet_version_output.stdout | regex_search(regexp,'\\1') }}"
+  vars:
+    regexp: '^fleet version (.*)$'
+  when: fleet_version_output.rc == 0
 
 - block:
-    - name: add kolide apt key
-      apt_key:
-        url: "https://dl.kolide.co/archive.key"
-        state: present
+  - name: Create temp dir
+    command: mktemp -d /tmp/kolide.XXXXXXXXXX
+    register: kolide_tmp_dir
 
-    - name: add kolide repository
-      apt_repository:
-        repo: "deb https://dl.kolide.co/apt jessie main"
-        state: present
-  when: kolide_apt_repo
+  - name: Require package unzip
+    package:
+      name: unzip
+      state: present
 
-- block:
-    - name: Download kolide package
-      get_url:
-        url: "{{ kolide_deb }}"
-        dest: "/var/tmp/{{ kolide_deb | basename }}"
-        mode: '0644'
-        checksum: "sha256:{{ kolide_deb_sha256 }}"
-    - name: Install kolide package
-      apt:
-        deb: "/var/tmp/{{ kolide_deb | basename }}"
-        state: present
-  when: not kolide_apt_repo
+  - name: Download Kolide Fleet
+    get_url:
+      url: "{{ kolide_zip }}"
+      dest: "{{ kolide_tmp_dir.stdout}}/{{ kolide_zip | basename }}"
+      checksum: "sha256:{{ kolide_zip_sha256 }}" # unarchive supports remote_url, but we also want to check the SHA256 sum that was retrieved Out Of Band
+
+  - name: Extract Kolide Fleet archive
+    unarchive:
+      src: "{{ kolide_tmp_dir.stdout}}/{{ kolide_zip | basename }}"
+      dest: "{{ kolide_tmp_dir.stdout}}"
+      remote_src: yes
+
+  - name: Install Kolide Fleeet
+    copy:
+      src: "{{ kolide_tmp_dir.stdout}}/linux/fleet_linux_amd64"
+      dest: /usr/bin/fleet
+      mode: u=rwx,go=rx
+      remote_src: yes
+  
+  always:
+  - name: Remove temp dir
+    file: 
+      path: "{{ kolide_tmp_dir.stdout }}"
+      state: absent
+    when: kolide_tmp_dir.rc == 0 # only run if a temp file was created
+  when: fleet_version_output.rc != 0 or fleet_version is version_compare('1.0.8', '<')

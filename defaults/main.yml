@@ -1,8 +1,7 @@
 ---
 
-kolide_apt_repo: false
-kolide_deb: https://dl.kolide.co/deb/kolide_1.0.4_amd64.deb
-kolide_deb_sha256: 6bc71e408af628f9e2213e1f859e33e8c5703886413b45529e9a5b30a43837aa
+kolide_zip: https://github.com/kolide/fleet/releases/download/1.0.8/fleet_1.0.8.zip
+kolide_zip_sha256: 307b8a159f24278f87a28678cc71d0f51798cfa40835ff6bafdcf87feaa4ff58
 
 kolide_ip_listen: 0.0.0.0
 kolide_port: 8000
@@ -37,3 +36,5 @@ kolide_certduration: 365
 
 kolide_license_file: ''
 #kolide_license_file: license.txt
+
+kolide_auth_jwt_key:

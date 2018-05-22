@@ -61,15 +61,6 @@
         kolide_certificate_key: "{{ ssl_privatedir }}/{{ ansible_fqdn }}.key"
         kolide_certificate_cert: "{{ ssl_dir }}/{{ ansible_fqdn }}.crt"
   when: kolide_certificate_cert == ''
-- name: ensure certificates is readable by kolide user
-  file:
-    path: "{{ item }}"
-    owner: "{{ kolide_user }}"
-    mode: "u+r,go-rwx"
-    state: present
-  with_items:
-    - "{{ kolide_certificate_key }}"
-    - "{{ kolide_certificate_cert }}"
 
 - name: configure kolide
   template:
@@ -85,7 +76,7 @@
   register: db
 - block:
     - name: prepare kolide db
-      command: /usr/bin/kolide prepare db --config /etc/kolide/kolide.yml
+      command: /usr/bin/fleet prepare db --config /etc/kolide/kolide.yml
     - name: add db prepare marker
       file: dest=/etc/kolide/.preparedb state=touch
   when: not db.stat.exists
